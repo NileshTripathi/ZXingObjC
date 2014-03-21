@@ -53,7 +53,7 @@ static NSCharacterSet *SEMICOLON_OR_COMMA = nil;
   NSMutableArray *names = [[self class] matchVCardPrefixedField:@"FN" rawText:rawText trim:YES parseFieldDivider:NO];
   if (names == nil) {
     // If no display names found, look for regular name fields and format them
-    names = [[self class] matchVCardPrefixedField:@"N" rawText:rawText trim:YES parseFieldDivider:YES];
+    names = [[self class] matchVCardPrefixedField:@"N" rawText:rawText trim:YES parseFieldDivider:NO];
     [self formatNames:names];
   }
   NSArray *nicknameString = [[self class] matchSingleVCardPrefixedField:@"NICKNAME" rawText:rawText trim:YES parseFieldDivider:NO];
@@ -316,20 +316,14 @@ static NSCharacterSet *SEMICOLON_OR_COMMA = nil;
 /**
  * Formats name fields of the form "Public;John;Q.;Reverend;III" into a form like
  * "Reverend John Q. Public III".
+ *
+ * @param names name values to format, in place
  */
 - (void)formatNames:(NSMutableArray *)names {
   if (names != nil) {
     for (NSMutableArray *list in names) {
       NSString *name = list[0];
-      NSMutableArray *components = [NSMutableArray arrayWithCapacity:5];
-      NSUInteger start = 0;
-      NSUInteger end;
-      while ((end = [name rangeOfString:@";" options:NSLiteralSearch range:NSMakeRange(start, [name length] - start)].location) != NSNotFound && end > 0) {
-        [components addObject:[name substringWithRange:NSMakeRange(start, [name length] - end - 1)]];
-        start = end + 1;
-      }
-
-      [components addObject:[name substringFromIndex:start]];
+      NSArray *components = [name componentsSeparatedByString:@";"];
       NSMutableString *newName = [NSMutableString stringWithCapacity:100];
       [self maybeAppendComponent:components i:3 newName:newName];
       [self maybeAppendComponent:components i:1 newName:newName];
@@ -342,8 +336,11 @@ static NSCharacterSet *SEMICOLON_OR_COMMA = nil;
 }
 
 - (void)maybeAppendComponent:(NSArray *)components i:(int)i newName:(NSMutableString *)newName {
-  if ([components count] > i && components[i]) {
-    [newName appendFormat:@" %@", components[i]];
+  if ([components count] > i && components[i] && [(NSString *)components[i] length] > 0) {
+    if ([newName length] > 0) {
+      [newName appendString:@" "];
+    }
+    [newName appendString:components[i]];
   }
 }
 
